@@ -1,0 +1,9 @@
+model:
+  name: firesight-baseline
+  image_size: 224
+  classes:
+    - fire
+    - smoke
+    - normal
+  checkpoint: models/checkpoints/baseline.json
+

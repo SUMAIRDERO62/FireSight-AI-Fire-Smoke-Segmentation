@@ -1,0 +1,4 @@
+body { background: #101827; color: #f8fafc; font: 16px system-ui, sans-serif; margin: 0; }
+main { margin: 10vh auto; max-width: 640px; padding: 2rem; }
+button, input { margin: 0.75rem 0.25rem 0.75rem 0; padding: 0.65rem; }
+pre { background: #1e293b; border-radius: 0.5rem; padding: 1rem; }
