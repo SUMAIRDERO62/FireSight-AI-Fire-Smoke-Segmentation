@@ -1,6 +1,5 @@
-from firesight.evaluation.metrics import accuracy
-
+"""Report that evaluation metrics require real image-mask pairs."""
 
 if __name__ == "__main__":
-    print(f"Baseline self-check accuracy: {accuracy(['normal'], ['normal']):.2f}")
+    print("No dataset or predictions are available. Evaluation results are not fabricated.")
 

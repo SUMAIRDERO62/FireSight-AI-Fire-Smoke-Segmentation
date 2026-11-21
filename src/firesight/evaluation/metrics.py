@@ -1,10 +1,30 @@
-from typing import Sequence
+"""Segmentation metric utilities."""
+
+import numpy as np
 
 
-def accuracy(y_true: Sequence[str], y_pred: Sequence[str]) -> float:
-    if len(y_true) != len(y_pred):
-        raise ValueError("y_true and y_pred must have the same length")
-    if not y_true:
-        return 0.0
-    return sum(actual == predicted for actual, predicted in zip(y_true, y_pred)) / len(y_true)
+def dice_score(target: np.ndarray, prediction: np.ndarray) -> float:
+    """Calculate the Sørensen-Dice coefficient for binary masks."""
+    target = np.asarray(target, dtype=bool)
+    prediction = np.asarray(prediction, dtype=bool)
+    if target.shape != prediction.shape:
+        raise ValueError("Target and prediction masks must have the same shape")
+    denominator = int(target.sum()) + int(prediction.sum())
+    if denominator == 0:
+        return 1.0
+    intersection = int(np.logical_and(target, prediction).sum())
+    return (2.0 * intersection) / denominator
+
+
+def intersection_over_union(target: np.ndarray, prediction: np.ndarray) -> float:
+    """Calculate binary mask intersection over union."""
+    target = np.asarray(target, dtype=bool)
+    prediction = np.asarray(prediction, dtype=bool)
+    if target.shape != prediction.shape:
+        raise ValueError("Target and prediction masks must have the same shape")
+    union = int(np.logical_or(target, prediction).sum())
+    if union == 0:
+        return 1.0
+    intersection = int(np.logical_and(target, prediction).sum())
+    return intersection / union
 

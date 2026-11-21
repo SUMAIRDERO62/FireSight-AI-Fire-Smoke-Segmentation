@@ -5,19 +5,28 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "firesight-ai"
 version = "0.1.0"
-description = "FireSight AI: fire and smoke image classification starter project."
+description = "FireSight AI: comparative U-Net and YOLO11-seg fire-smoke image segmentation."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-  "numpy>=1.24",
-  "pillow>=10.0",
+  "numpy>=1.26",
+  "pillow>=10.3",
   "pyyaml>=6.0",
   "fastapi>=0.110",
   "uvicorn[standard]>=0.29",
+  "python-multipart>=0.0.9",
+  "opencv-python-headless>=4.10",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "httpx>=0.27"]
+segmentation = [
+  "torch>=2.2",
+  "ultralytics>=8.3",
+]
+dev = [
+  "pytest>=8.0",
+  "httpx>=0.27",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

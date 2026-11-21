@@ -9,9 +9,14 @@
   <body>
     <main>
       <h1>FireSight AI</h1>
-      <p>Upload an image to classify fire, smoke, or normal scenes.</p>
+      <p>Upload an image and compare fire/smoke segmentation models.</p>
+      <label for="model">Model:</label>
+      <select id="model">
+        <option value="unet">U-Net</option>
+        <option value="yolo11-seg">YOLO11-seg</option>
+      </select>
       <input id="image" type="file" accept="image/*">
-      <button id="predict">Predict</button>
+      <button id="segment">Segment</button>
       <pre id="result">No prediction yet.</pre>
     </main>
     <script src="app.js"></script>

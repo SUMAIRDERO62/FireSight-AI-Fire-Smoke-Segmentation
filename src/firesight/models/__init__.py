@@ -1,1 +1,1 @@
-"""Model definitions."""
+"""Segmentation model interfaces and adapters."""

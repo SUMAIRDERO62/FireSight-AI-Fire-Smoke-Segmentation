@@ -7,12 +7,22 @@ dist/
 build/
 *.egg-info/
 .env
+*.pt
+*.pth
+*.onnx
+*.engine
+runs/
+wandb/
+kaggle.json
 data/raw/*
 data/processed/*
 data/annotations/*
 models/checkpoints/*
 reports/figures/*
 reports/results/*
+output/
+inference-results/
 !.gitkeep
 *.ipynb_checkpoints/
+.DS_Store
 

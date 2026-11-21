@@ -1,7 +1,8 @@
 # Viva questions
 
-- Why are fire and smoke separate classes?
-- How would you handle class imbalance?
-- Which metrics are more useful than accuracy for safety detection?
-- How would you reduce false alarms in production?
+- Why is segmentation more informative than image classification for this task?
+- How will U-Net and YOLO11-seg be compared fairly?
+- How will you handle class imbalance between fire, smoke, and background?
+- Why are Dice coefficient and intersection over union suitable metrics?
+- How would you evaluate and reduce false-positive segmented regions?
 

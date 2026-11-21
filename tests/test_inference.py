@@ -3,12 +3,16 @@ from io import BytesIO
 from PIL import Image
 
 from firesight.inference.predictor import Predictor
+from firesight.models.segmentation import ModelNotAvailableError
 
 
-def test_predictor_returns_known_class():
+def test_predictor_rejects_missing_checkpoint():
     buffer = BytesIO()
     Image.new("RGB", (10, 10), (255, 40, 20)).save(buffer, format="PNG")
-    result = Predictor(image_size=8).predict_bytes(buffer.getvalue())
-    assert result.label in {"fire", "smoke", "normal"}
-    assert 0 <= result.confidence <= 1
+    try:
+        Predictor("unet", "models/checkpoints/not-present.pt", image_size=8)
+    except ModelNotAvailableError as exc:
+        assert "checkpoint is unavailable" in str(exc)
+    else:
+        raise AssertionError("Missing checkpoint did not raise ModelNotAvailableError")
 

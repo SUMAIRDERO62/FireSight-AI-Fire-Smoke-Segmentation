@@ -1,1 +1,1 @@
-"""Inference services."""
+"""Image segmentation inference services."""

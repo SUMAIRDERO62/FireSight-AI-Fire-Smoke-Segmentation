@@ -9,5 +9,5 @@ def test_load_image_returns_normalized_rgb_array():
     Image.new("RGB", (10, 10), (255, 0, 0)).save(buffer, format="PNG")
     image = load_image(buffer.getvalue(), image_size=8)
     assert image.shape == (8, 8, 3)
-    assert image.max() <= 1.0
+    assert image.dtype.name == "uint8"
 

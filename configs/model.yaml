@@ -1,9 +1,13 @@
-model:
-  name: firesight-baseline
-  image_size: 224
-  classes:
-    - fire
-    - smoke
-    - normal
-  checkpoint: models/checkpoints/baseline.json
+models:
+  unet:
+    name: U-Net
+    checkpoint: models/checkpoints/unet.pt
+    image_size: 512
+  yolo11-seg:
+    name: YOLO11-seg
+    checkpoint: models/checkpoints/yolo11-seg.pt
+    image_size: 640
+classes:
+  - fire
+  - smoke
 
