@@ -1,0 +1,10 @@
+# FireSight AI dataset protection
+data/raw/
+data/processed/
+data/inspection/
+*.pt
+*.pth
+*.onnx
+*.engine
+runs/
+wandb/

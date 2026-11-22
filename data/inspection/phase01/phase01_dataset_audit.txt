@@ -1,0 +1,988 @@
+FIRESIGHT AI — PHASE 01 DATASET AUDIT
+Generated: 2026-11-22T00:53:43
+Project root: E:\BEST\FireSight AI
+
+READ-ONLY: source files are not moved, renamed, edited, or deleted.
+This is an initial technical audit, not proof of annotation quality or legal permission.
+YOLO five-value rows usually indicate detection boxes; polygon-shaped rows may indicate segmentation.
+COCO segmentation fields and image-label stem matching still require manual validation.
+TFRecord content is counted but not decoded.
+
+================================================================================
+DATASET: D-Fire
+Folder exists: YES
+Total files: 43054
+Total size: 2.90 GB
+Images: 21527
+Potential annotation files: 21527
+Extensions:
+  .jpg: 21527
+  .txt: 21527
+Split directory counts (file counts, not verified split assignments):
+  test: 8612
+  train: 34442
+Image/annotation same-stem check:
+{
+  "unique_image_stems": 21527,
+  "unique_annotation_stems_txt_xml_json": 21527,
+  "matched_stems": 21527,
+  "image_stems_without_same_stem_annotation": 0,
+  "annotation_stems_without_same_stem_image": 0,
+  "sample_unmatched_image_stems": [],
+  "sample_unmatched_annotation_stems": [],
+  "warning": "Stem matching is approximate; nested folders and shared names may need dataset-specific checks."
+}
+Annotation sample inspection:
+
+  FILE: data\raw\D-Fire\test\labels\AoF06723.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06724.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06725.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06726.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06727.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06728.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06729.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06730.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06731.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06732.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06733.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06734.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06735.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06736.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06737.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06738.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06739.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06740.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06741.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+  FILE: data\raw\D-Fire\test\labels\AoF06742.txt
+{
+  "format": "TXT / possible YOLO",
+  "nonempty_lines": 0,
+  "five_value_box_rows": 0,
+  "polygon_shaped_rows": 0,
+  "other_rows": 0,
+  "class_ids_seen": [],
+  "sample_lines": [],
+  "coordinate_values_in_0_1": null
+}
+
+================================================================================
+DATASET: DataCluster
+Folder exists: YES
+Total files: 134
+Total size: 88.89 MB
+Images: 100
+Potential annotation files: 34
+Extensions:
+  .jpg: 100
+  .xml: 34
+Split directory counts (file counts, not verified split assignments):
+  (split not identified): 134
+Image/annotation same-stem check:
+{
+  "unique_image_stems": 100,
+  "unique_annotation_stems_txt_xml_json": 34,
+  "matched_stems": 34,
+  "image_stems_without_same_stem_annotation": 66,
+  "annotation_stems_without_same_stem_image": 0,
+  "sample_unmatched_image_stems": [
+    "datacluster fire and smoke sample (1)",
+    "datacluster fire and smoke sample (10)",
+    "datacluster fire and smoke sample (100)",
+    "datacluster fire and smoke sample (11)",
+    "datacluster fire and smoke sample (12)",
+    "datacluster fire and smoke sample (13)",
+    "datacluster fire and smoke sample (14)",
+    "datacluster fire and smoke sample (15)",
+    "datacluster fire and smoke sample (16)",
+    "datacluster fire and smoke sample (17)",
+    "datacluster fire and smoke sample (18)",
+    "datacluster fire and smoke sample (19)",
+    "datacluster fire and smoke sample (2)",
+    "datacluster fire and smoke sample (20)",
+    "datacluster fire and smoke sample (21)",
+    "datacluster fire and smoke sample (22)",
+    "datacluster fire and smoke sample (23)",
+    "datacluster fire and smoke sample (24)",
+    "datacluster fire and smoke sample (25)",
+    "datacluster fire and smoke sample (26)"
+  ],
+  "sample_unmatched_annotation_stems": [],
+  "warning": "Stem matching is approximate; nested folders and shared names may need dataset-specific checks."
+}
+Annotation sample inspection:
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (69).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (7).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (70).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (71).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (72).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (73).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (74).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (75).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (76).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (77).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (78).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (79).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": false,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "database",
+    "depth",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "segmented",
+    "size",
+    "source",
+    "width"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (8).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (80).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (81).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (82).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (83).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (84).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (85).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
+
+  FILE: data\raw\DataCluster\Annotations\Datacluster Fire and Smoke Sample (86).xml
+{
+  "format": "XML / possible Pascal VOC",
+  "bndbox_found": true,
+  "polygon_or_point_tags_found": false,
+  "mask_or_segmentation_tags_found": false,
+  "tags": [
+    "annotation",
+    "attribute",
+    "attributes",
+    "bndbox",
+    "database",
+    "depth",
+    "difficult",
+    "filename",
+    "folder",
+    "height",
+    "image",
+    "name",
+    "object",
+    "occluded",
+    "segmented",
+    "size",
+    "source",
+    "truncated",
+    "value",
+    "width",
+    "xmax",
+    "xmin",
+    "ymax",
+    "ymin"
+  ]
+}
