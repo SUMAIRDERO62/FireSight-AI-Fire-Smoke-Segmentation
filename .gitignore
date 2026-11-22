@@ -94,3 +94,6 @@ inference-results/
 *.rar
 *.tar
 *.gz
+# Generated training history and plots
+reports/training/*
+!reports/training/.gitkeep

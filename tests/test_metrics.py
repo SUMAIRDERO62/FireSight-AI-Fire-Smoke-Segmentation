@@ -1,24 +1,109 @@
-"""Tests for segmentation metrics."""
+import pytest
+import torch
 
-import numpy as np
-
-from firesight.evaluation.metrics import dice_score, intersection_over_union
-
-
-def test_perfect_masks_score_one():
-    mask = np.ones((4, 4), dtype=bool)
-    assert dice_score(mask, mask) == 1.0
-    assert intersection_over_union(mask, mask) == 1.0
+from firesight.evaluation.metrics import SegmentationMetrics
 
 
-def test_empty_masks_score_one():
-    mask = np.zeros((4, 4), dtype=bool)
-    assert dice_score(mask, mask) == 1.0
-    assert intersection_over_union(mask, mask) == 1.0
+def test_perfect_predictions_have_perfect_metrics():
+    targets = torch.tensor([[[0, 1], [1, 0]]])
+    predictions = targets.clone()
+
+    metrics = SegmentationMetrics(num_classes=2)
+    metrics.update(predictions, targets)
+    result = metrics.compute()
+
+    assert result["accuracy"] == 1.0
+    assert result["macro_dice"] == 1.0
+    assert result["macro_iou"] == 1.0
+    assert result["macro_precision"] == 1.0
+    assert result["macro_recall"] == 1.0
 
 
-def test_partially_overlapping_masks():
-    target = np.array([[1, 1], [0, 0]], dtype=bool)
-    prediction = np.array([[1, 0], [1, 0]], dtype=bool)
-    assert dice_score(target, prediction) == 0.5
-    assert intersection_over_union(target, prediction) == 0.3333333333333333
+def test_confusion_matrix_counts_are_correct():
+    targets = torch.tensor([[[0, 0], [1, 1]]])
+    predictions = torch.tensor([[[0, 1], [1, 0]]])
+
+    metrics = SegmentationMetrics(num_classes=2)
+    metrics.update(predictions, targets)
+
+    result = metrics.compute()
+
+    assert result["confusion_matrix"] == [[1, 1], [1, 1]]
+    assert result["total_pixels"] == 4
+    assert result["accuracy"] == 0.5
+
+
+def test_logits_are_converted_to_class_predictions():
+    targets = torch.tensor([[[0, 1], [1, 0]]])
+    logits = torch.tensor(
+        [
+            [
+                [[5.0, 1.0], [1.0, 5.0]],
+                [[1.0, 5.0], [5.0, 1.0]],
+            ]
+        ]
+    )
+
+    metrics = SegmentationMetrics(num_classes=2)
+    metrics.update(logits, targets)
+
+    assert metrics.compute()["accuracy"] == 1.0
+
+
+def test_ignore_index_is_excluded():
+    targets = torch.tensor([[[0, 1], [255, 0]]])
+    predictions = torch.tensor([[[0, 0], [1, 0]]])
+
+    metrics = SegmentationMetrics(num_classes=2, ignore_index=255)
+    metrics.update(predictions, targets)
+
+    result = metrics.compute()
+
+    assert result["total_pixels"] == 3
+    assert result["accuracy"] == pytest.approx(2 / 3)
+
+
+def test_metrics_accumulate_multiple_batches():
+    metrics = SegmentationMetrics(num_classes=2)
+
+    metrics.update(
+        torch.tensor([[[0, 1]]]),
+        torch.tensor([[[0, 1]]]),
+    )
+    metrics.update(
+        torch.tensor([[[1, 0]]]),
+        torch.tensor([[[1, 0]]]),
+    )
+
+    result = metrics.compute()
+
+    assert result["total_pixels"] == 4
+    assert result["accuracy"] == 1.0
+
+
+def test_invalid_target_class_is_rejected():
+    metrics = SegmentationMetrics(num_classes=2)
+
+    with pytest.raises(ValueError, match="Targets"):
+        metrics.update(
+            torch.tensor([[[0, 1]]]),
+            torch.tensor([[[0, 3]]]),
+        )
+
+
+def test_reset_clears_confusion_matrix():
+    metrics = SegmentationMetrics(num_classes=2)
+    targets = torch.tensor([[[0, 1]]])
+
+    metrics.update(targets, targets)
+    metrics.reset()
+
+    result = metrics.compute()
+
+    assert result["total_pixels"] == 0
+    assert result["accuracy"] is None
+
+
+def test_invalid_class_count_is_rejected():
+    with pytest.raises(ValueError):
+        SegmentationMetrics(num_classes=1)
