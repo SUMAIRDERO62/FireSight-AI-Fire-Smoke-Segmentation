@@ -1,0 +1,27 @@
+model:
+  weights: yolo11n-seg.pt
+  task: segment
+  classes:
+    - fire
+    - smoke
+
+dataset:
+  yaml: data/processed/yolo11_seg_split_safe/data.yaml
+
+training:
+  epochs: 100
+  imgsz: 640
+  batch: 8
+  device: null
+  workers: 4
+  patience: 30
+  seed: 42
+  pretrained: true
+  optimizer: auto
+  project: runs/segment
+  name: firesight_yolo11n_seg
+  exist_ok: false
+  save: true
+  plots: true
+  val: true
+  deterministic: true
