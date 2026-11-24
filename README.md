@@ -1,215 +1,398 @@
-FireSight AI
-Intelligent Fire & Smoke Detection — Dataset Engineering and Computer Vision Project
-FireSight AI is a computer-vision project being developed to investigate fire and smoke recognition from images and, in later stages, support segmentation-based analysis. The project is being built in structured phases, with emphasis on dataset verification, reproducibility, annotation quality, testing, and transparent reporting.
-Current verified stage: Phase 02 dataset audit and D-Fire detection-data preparation have been run locally. The prepared labels are YOLO object-detection bounding boxes, not segmentation masks. Model training and segmentation readiness are not claimed as complete.
+﻿# FireSight AI
+### Intelligent Fire & Smoke Detection Using Computer Vision
 
-Table of contents
+<p align="center">
+  <strong>Academic Computer Vision & Research Project</strong><br>
+  Dataset Engineering | Deep Learning | Object Detection | Image Segmentation
+</p>
 
-- Project objectives
-- Current development status
-- Datasets reviewed
-- Annotation quality findings
-- Project structure
-- Environment setup
-- Run the dataset audit
-- Prepare D-Fire detection data
-- Run tests
-- Data and annotation policy
-- Git workflow
-- Roadmap
-  Project objectives
-  The long-term project direction includes:
+---
 
-1. Fire and smoke recognition: develop computer-vision models that can identify fire and smoke in visual data.
-2. Object detection: use bounding-box annotations for detection experiments where class semantics and label quality are verified.
-3. Semantic segmentation: investigate a U-Net-style architecture after genuine pixel-level masks are available.
-4. Instance segmentation: investigate YOLO segmentation models after polygon or instance-mask annotations are available.
-5. Reproducible engineering: maintain dataset manifests, deterministic splits, validation checks, automated tests, and clear experiment records.
-   These are project objectives, not claims that all models or capabilities have already been implemented.
-   Current development status
-   Area Current status
-   Dataset research and inspection Completed for the datasets described below
-   D-Fire image/label pairing audit 21,527 matching image-label records reported
-   D-Fire annotation format YOLO object-detection boxes
-   D-Fire class-name mapping Not yet verified from an authoritative source
-   D-Fire invalid annotation review 26 invalid rows identified by local diagnostic
-   D-Fire train/validation/test preparation Prepared locally; counts below
-   Exact train/test image-hash overlap 0 reported by preparation script
-   DataCluster annotation format Pascal VOC XML bounding boxes
-   Phase 02 automated tests 10 tests passed in the reported local run
-   U-Net ground-truth masks Not verified / not available in reviewed annotations
-   YOLO segmentation polygons Not verified / not available in reviewed annotations
-   Model training and evaluation Not yet reported as completed
+## Project Overview
 
-D-Fire prepared split
-Split Images
-Train 14,585
-Validation 2,636
-Test 4,306
-Total 21,527
+**FireSight AI** is an academic computer-vision project focused on developing and evaluating intelligent systems for fire and smoke detection and segmentation.
 
-The original test partition was retained, while validation was carved from the original training partition using seed 42 and validation ratio 0.15.
+The project follows a structured research and engineering workflow, covering dataset investigation, annotation validation, model development, training pipelines, evaluation, and comparative analysis.
 
-Data-quality qualification: The preparation output reported zero excluded records, but a subsequent raw-label diagnostic identified 26 invalid annotation rows. The prepared copy must not be treated as fully label-clean until the preparation pipeline is updated to detect and handle those rows and the reports are regenerated.
-Datasets reviewed
+The primary objective is to investigate how deep-learning architectures can identify fire and smoke in images and, where suitable pixel-level annotations are available, perform segmentation.
 
-1. D-Fire
-   The local audit reported:
+Rather than focusing only on model implementation, FireSight AI emphasizes:
 
-- 21,527 JPG images.
-- 21,527 TXT label files.
-- 21,527 matching image-label records.
-- YOLO detection rows with five fields: class_id x_center y_center width height.
-- Raw class-row counts: class 0 = 11,865 and class 1 = 14,692.
-- No authoritative class-name mapping file was found in the inspected dataset directory.
-  The numeric class IDs remain unresolved. Do not assume class 0 means fire or class 1 means smoke until the publisher's authoritative mapping is verified.
+- Dataset quality and annotation reliability.
+- Reproducible data preparation and experiments.
+- Deep-learning model development.
+- Automated testing and validation.
+- Transparent evaluation and reporting.
+- Responsible interpretation of experimental results.
 
-2. DataCluster
-   The local audit reported:
+> **Current research status:** Phase 03 U-Net development and Phase 04 YOLO11-seg pipeline implementation have been completed and tested locally. Full GPU training and final comparative evaluation remain pending.
 
-- 100 JPG images.
-- 34 Pascal VOC XML annotation files.
-- 34 matching image/XML records.
-- 66 images without a same-stem XML annotation.
-- 0 orphan XML files.
-- 40 annotated objects with class name fire.
-- The inspected XML format uses <bndbox> coordinates and is detection annotation, not pixel-level segmentation.
-  The 66 unmatched images must not automatically be interpreted as negative/background examples.
-  Annotation quality findings
-  The raw D-Fire diagnostic reported:
-  Class ID Raw rows Valid rows Difference
-  0 11,865 11,846 19
-  1 14,692 14,685 7
-  Total 26,557 26,531 26
+---
 
-The follow-up classification found these conditions. Categories overlap because a row can violate more than one rule:
+## Author & Project Information
 
-- 17 rows with zero or negative width.
-- 17 rows with zero or negative height.
-- 8 rows with at least one coordinate/dimension outside the [0, 1] range.
-- 26 unique invalid rows based on the raw-versus-valid row difference.
-  The original files under data/raw/ must remain unchanged. Invalid rows should be logged in a machine-readable quality report. Do not silently clip coordinates, invent boxes, or convert bounding boxes into segmentation masks.
-  Project structure
-  The repository may evolve. This is the intended organization of relevant components:
-  FireSight-AI/
-  ├── configs/ # Project and experiment configuration
-  ├── data/
-  │ ├── raw/ # Original datasets (not committed)
-  │ ├── interim/ # Temporary data products (not committed)
-  │ ├── processed/ # Prepared datasets (not committed)
-  │ └── annotations/ # Annotation work (not committed)
-  ├── docs/ # Architecture, methodology and phase guides
-  ├── models/
-  │ └── checkpoints/ # Model weights (not committed)
-  ├── reports/
-  │ ├── phase02/ # Dataset audit reports
-  │ ├── figures/ # Generated figures (not committed)
-  │ └── results/ # Experiment outputs (not committed)
-  ├── scripts/ # Audit and preparation entry points
-  ├── src/
-  │ └── firesight/ # Reusable Python package
-  ├── tests/ # Automated tests
-  ├── .gitignore
-  ├── pyproject.toml
-  ├── pytest.ini
-  ├── requirements.txt
-  └── README.md
-  This is a documentation map, not a guarantee that every directory is already present locally.
-  Environment setup
-  Requirements:
-- Python 3.12 (the reported local environment used Python 3.12.10)
-- Git
-- A virtual environment
-- Datasets placed in the expected local data/raw/ structure
-  Windows PowerShell
-  From the repository root:
-  py -3.12 -m venv .venv
-  .\.venv\Scripts\Activate.ps1
-  python --version
-  python -m pip install --upgrade pip
-  python -m pip install -r requirements.txt
-  If the optional Phase 02 dependency file is present and needed:
-  python -m pip install -r requirements-phase02.txt
-  Review both dependency files first if they contain package pins that may conflict.
-  Run the dataset audit
-  With the virtual environment active:
-  python scripts/phase02_audit.py --project-root .
-  The Phase 02 audit writes reports under reports/phase02/. Reported outputs include:
-- dataset_audit.json
-- dataset_manifest.csv
-- annotation_class_counts.csv
-- duplicate_groups.csv
-- dataset_report.md
-  Review these outputs before using data in a training workflow.
-  Prepare D-Fire detection data
-  The locally used command was:
-  python scripts/prepare_phase02.py --project-root . --dataset d-fire --val-ratio 0.15 --seed 42
-  Reported output directory:
-  data/processed/phase02/d-fire-detection/
-  ├── images/
-  │ ├── train/
-  │ ├── val/
-  │ └── test/
-  ├── labels/
-  │ ├── train/
-  │ ├── val/
-  │ └── test/
-  ├── preparation_report.json
-  └── split_manifest.csv
-  This is a detection-data layout, not a U-Net mask dataset and not a YOLO segmentation dataset.
+| Field | Details |
+|---|---|
+| Project Name | FireSight AI |
+| Author | **Sumair Ahmed Dero** |
+| Role | Project Developer & Researcher |
+| Academic Background | BS Artificial Intelligence |
+| Institution | University of Sindh, Jamshoro |
+| Project Category | Academic / Research-oriented Computer Vision |
+| Primary Domain | Artificial Intelligence & Deep Learning |
+| Programming Language | Python |
+| Repository | FireSight AI — Fire & Smoke Segmentation |
 
-Before training, update or verify the preparation workflow so it reports and handles malformed/invalid annotation rows. Re-run preparation and tests after that change.
-Run tests
-python -m pytest tests/phase02 -q
-The reported local result for the current Phase 02 test suite was:
-10 passed
-Passing tests verify the tested code paths; they do not prove all source annotations are correct or that segmentation is ready.
-Data and annotation policy
+### Academic Project Description
 
-1. Preserve original dataset files under data/raw/.
-2. Do not commit raw or processed datasets to Git.
-3. Do not claim segmentation readiness based on bounding boxes.
-4. Do not invent class-name mappings.
-5. Do not automatically classify unmatched images as negative examples.
-6. Record malformed labels and exclusions in reports.
-7. Keep data splitting reproducible.
-8. Review exact and near-duplicate leakage risks.
-9. Verify dataset licensing and redistribution permissions before publishing data or sample images.
-10. Keep credentials, API keys, and private configuration out of the repository.
-    Git workflow
-    Check changes before staging:
-    git status --short
-    git diff --check
-    git diff
-    Stage only reviewed source, test, configuration, and documentation files. Do not use git add . until confirming datasets, generated outputs, secrets, and large archives are ignored.
+This project is developed as an academic and research-oriented computer-vision initiative. It explores the application of deep-learning techniques to fire and smoke recognition, with particular attention to dataset engineering, model architecture, segmentation methods, and experimental evaluation.
 
-Example focused staging:
-git add .gitignore README.md
-git add scripts/phase02_audit.py scripts/prepare_phase02.py
-git add src/firesight/data tests/phase02
-git add docs/PHASE_02_DATA_ENGINEERING.md requirements-phase02.txt
-Inspect staged changes:
-git diff --cached --check
-git diff --cached --stat
+---
+
+## Project Objectives
+
+1. **Fire and Smoke Recognition** — Investigate automated recognition of fire and smoke in images.
+2. **Dataset Engineering** — Inspect, validate, organize, and prepare image datasets and annotations.
+3. **Deep Learning Models** — Develop and investigate U-Net and YOLO-based architectures.
+4. **Image Segmentation** — Explore pixel-level fire and smoke segmentation using genuine segmentation annotations.
+5. **Model Evaluation** — Compare models using appropriate quantitative and qualitative metrics.
+6. **Reproducibility** — Maintain configurations, deterministic data splits, automated tests, and experiment reports.
+7. **Research Documentation** — Record methodology, limitations, findings, and future improvements.
+
+---
+
+## Development Progress
+
+FireSight AI is being developed in independent phases.
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 01 | Project foundation and initial data engineering | Completed |
+| Phase 02 | Dataset inspection, annotation audit, and data preparation | Locally completed; quality follow-ups documented |
+| Phase 03 | U-Net model development and training/evaluation pipeline | Implementation completed; tests passed |
+| Phase 04 | YOLO11 segmentation pipeline, evaluation, and prediction | Implementation and local testing completed |
+| Phase 05 | U-Net vs YOLO11 comparative evaluation | Pending |
+| Phase 06 | Final research analysis and documentation | Planned |
+
+### Phase 02 — Dataset Engineering
+
+Work included:
+
+- D-Fire image and label pairing inspection.
+- DataCluster annotation-format inspection.
+- Dataset manifests and annotation statistics.
+- Reproducible train, validation, and test preparation.
+- Duplicate and annotation-quality investigations.
+
+Important data-quality findings:
+
+- D-Fire annotations inspected during the initial audit used YOLO bounding-box format.
+- DataCluster annotations inspected during the audit used Pascal VOC XML bounding boxes.
+- Some invalid D-Fire annotation rows were identified during follow-up diagnostics.
+- The authoritative mapping of D-Fire numeric class IDs requires verification.
+
+**Important:** Bounding-box annotations are not segmentation masks. They must not be treated as pixel-level ground truth.
+
+### Phase 03 — U-Net Development
+
+The U-Net development pipeline includes:
+
+- U-Net model implementation.
+- Training workflow.
+- Evaluation components.
+- Prediction and visualization support.
+- Automated tests.
+
+The Phase 03 implementation was completed and recorded in the project Git history.
+
+### Phase 04 — YOLO11 Segmentation Pipeline
+
+The YOLO11-seg development work includes:
+
+- YOLO annotation auditing and visualization.
+- Dataset preparation and split-safety utilities.
+- Duplicate-pair verification and dataset analysis.
+- YOLO11 segmentation configuration.
+- Model and training components.
+- Evaluation and prediction scripts.
+- Automated Phase 04 tests.
+
+**Local verification:** The complete test suite reported 70 passing tests. One dependency deprecation warning was reported; it did not cause a test failure.
+
+Prediction and evaluation workflows were also smoke-tested locally.
+
+**Training qualification:** The currently tested YOLO checkpoint was produced through a one-epoch CPU smoke test. It verifies pipeline execution, not final model performance. Full GPU training is still required.
+
+---
+
+## Models and Technologies
+
+| Component | Technology |
+|---|---|
+| Programming Language | Python |
+| Deep Learning Framework | PyTorch |
+| Object Detection / Segmentation | Ultralytics YOLO11 |
+| Segmentation Architecture | U-Net |
+| API Framework | FastAPI |
+| Image Processing | OpenCV, Pillow |
+| Numerical Computing | NumPy |
+| Data Analysis | Pandas |
+| Visualization | Matplotlib |
+| Configuration | YAML |
+| Testing | Pytest |
+| Version Control | Git and GitHub |
+
+---
+
+## Project Structure
+
+```text
+FireSight-AI/
+│
+├── configs/
+│   └── yolo11_seg.yaml
+│
+├── data/
+│   ├── raw/                 # Original datasets (not committed)
+│   ├── interim/             # Temporary data (not committed)
+│   ├── processed/           # Prepared datasets (not committed)
+│   └── annotations/         # Annotation data (not committed)
+│
+├── docs/                    # Phase documentation
+│
+├── models/                  # Model-related resources
+│
+├── reports/                 # Evaluation and research reports
+│
+├── scripts/
+│   ├── audit_yolo_annotations.py
+│   ├── create_annotation_contact_sheets.py
+│   ├── create_split_safe_dataset.py
+│   ├── evaluate_yolo11_seg.py
+│   ├── prepare_yolo_dataset.py
+│   ├── predict_yolo11_seg.py
+│   ├── train_yolo11_seg.py
+│   └── visualize_yolo_annotations.py
+│
+├── src/
+│   └── firesight/
+│       ├── data/
+│       ├── evaluation/
+│       ├── models/
+│       └── training/
+│
+├── tests/
+│   ├── phase03/
+│   └── phase04/
+│
+├── requirements.txt
+├── pyproject.toml
+├── pytest.ini
+├── .gitignore
+└── README.md
+```
+
+Generated datasets, model weights, and experiment outputs are intentionally excluded from version control.
+
+---
+
+## Installation & Setup
+
+### 1. Clone the repository
+
+```powershell
+git clone https://github.com/SUMAIRDERO62/FireSight-AI-Fire-Smoke-Segmentation.git
+
+cd FireSight-AI-Fire-Smoke-Segmentation
+```
+
+### 2. Create a virtual environment
+
+```powershell
+py -3.12 -m venv .venv
+```
+
+### 3. Activate the environment
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks activation in the current session:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+```
+
+Then activate the environment again.
+
+### 4. Install dependencies
+
+```powershell
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 5. Verify Python and dependencies
+
+```powershell
+python --version
+python -m pip list
+```
+
+For GPU training, install a PyTorch build compatible with the target machine's CUDA environment and verify GPU availability before starting experiments.
+
+---
+
+## Running Tests
+
+Run the complete test suite from the repository root:
+
+```powershell
+python -m pytest -q
+```
+
+For Phase 04 tests:
+
+```powershell
+python -m pytest tests/phase04 -q
+```
+
+For Phase 03 tests:
+
+```powershell
+python -m pytest tests/phase03 -q
+```
+
+The reported local full-suite result for the current implementation was:
+
+```text
+70 passed
+```
+
+Test results verify the tested software behavior; they do not establish final model accuracy or dataset correctness.
+
+---
+
+## Experimental Methodology
+
+The planned comparative evaluation will use a consistent experimental methodology.
+
+### Quantitative Metrics
+
+- Dice coefficient.
+- Intersection over Union (IoU).
+- Per-class IoU.
+- Precision and recall.
+- Inference time per image.
+- Model size and computational requirements.
+- YOLO mask mAP where applicable.
+
+Detection mAP and pixel-level segmentation IoU measure different tasks and will not be treated as interchangeable metrics.
+
+### Qualitative Evaluation
+
+The research will also inspect:
+
+- Correctly segmented fire and smoke regions.
+- Missed detections and false positives.
+- Boundary quality.
+- Small or partially visible objects.
+- Difficult lighting and background conditions.
+- Differences between U-Net and YOLO11 predictions.
+
+No final model winner will be declared without completed, comparable experiments.
+
+---
+
+## Dataset & Research Integrity
+
+The following principles guide this project:
+
+1. Preserve original datasets.
+2. Do not commit raw or processed datasets without appropriate permission.
+3. Do not invent annotation class mappings.
+4. Do not convert bounding boxes into segmentation masks and present them as ground truth.
+5. Record malformed annotations and data exclusions.
+6. Keep train, validation, and test splits reproducible.
+7. Investigate duplicate and near-duplicate data leakage.
+8. Avoid tuning on the independent test set.
+9. Record hardware, configuration, preprocessing, and evaluation methodology.
+10. Report limitations and unsuccessful experiments honestly.
+
+Dataset licensing and redistribution permissions must be reviewed before publishing dataset contents or sample images.
+
+---
+
+## Roadmap
+
+### Completed / Locally Verified
+
+- [x] Initial project foundation.
+- [x] Dataset inspection and engineering workflows.
+- [x] U-Net model development pipeline.
+- [x] YOLO11 segmentation pipeline implementation.
+- [x] Evaluation and prediction scripts.
+- [x] Automated local test suite verification.
+
+### In Progress / Planned
+
+- [ ] Final review of dataset class semantics.
+- [ ] Final annotation-quality verification.
+- [ ] Full U-Net training on suitable GPU hardware.
+- [ ] Full YOLO11-seg training on suitable GPU hardware.
+- [ ] Evaluation using the same independent test set.
+- [ ] U-Net vs YOLO11 quantitative comparison.
+- [ ] Qualitative prediction comparison.
+- [ ] Failure-case analysis.
+- [ ] Final research report and conclusions.
+
+---
+
+## Limitations
+
+The current implementation should be interpreted in the context of its development stage.
+
+- Full GPU training has not yet been completed.
+- The CPU smoke-test checkpoint is not a final research model.
+- Initial bounding-box datasets do not establish segmentation readiness.
+- Final performance metrics have not yet been established.
+- Comparative conclusions require completed experiments under consistent conditions.
+
+These limitations are documented to distinguish verified engineering progress from future research objectives.
+
+---
+
+## Version Control
+
+This project uses Git and GitHub to maintain a structured development history.
+
+Example workflow:
+
+```powershell
 git status --short
-Commit only after reviewing the staged diff.
-Roadmap
-Completed or locally verified
+git diff --check
+git add README.md
+git commit -m "docs: improve project documentation"
+git push origin main
+```
 
-- [x] Initial dataset inspection and pairing audit for D-Fire and DataCluster
-- [x] Detection annotation formats identified from inspected labels
-- [x] D-Fire deterministic train/validation/test preparation run
-- [x] Phase 02 test suite passed in the reported local run
-- [x] D-Fire invalid annotation rows identified by follow-up diagnostic
-      Pending
-- [ ] Verify D-Fire class IDs using authoritative publisher documentation
-- [ ] Update preparation pipeline to detect and handle invalid labels
-- [ ] Regenerate prepared data and quality reports
-- [ ] Investigate the 66 DataCluster images without matching XML
-- [ ] Review dataset licenses and publication permissions
-- [ ] Create or obtain genuine fire/smoke segmentation masks or polygons
-- [ ] Perform visual annotation quality review
-- [ ] Train and evaluate detection/segmentation models
-- [ ] Record experiment configurations and metrics
-      Project status statement
-      FireSight AI has an audited and locally prepared object-detection data workflow under development. The current reviewed annotations are bounding boxes. The project does not yet claim completed model training, verified class semantics, or U-Net/YOLO segmentation readiness. Those milestones require additional source verification, data-quality handling, and genuine segmentation annotations.
+Only reviewed source code, tests, configuration, and documentation should be committed. Datasets, model weights, generated outputs, credentials, and local environment files must remain excluded.
+
+---
+
+## Project Vision
+
+The long-term vision of FireSight AI is to develop a reliable and reproducible computer-vision workflow for fire and smoke analysis.
+
+The project aims to combine sound dataset engineering, deep-learning model development, meaningful evaluation, and transparent research practices.
+
+**Built with Python, PyTorch, Computer Vision, and a research-first mindset.**
+
+---
+
+<p align="center">
+  <strong>FireSight AI</strong><br>
+  Developed by <strong>Sumair Ahmed Dero</strong><br>
+  Academic Computer Vision Project
+</p>
