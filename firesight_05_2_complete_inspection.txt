@@ -1,0 +1,994 @@
+
+========== src/firesight/data/segmentation_dataset.py ==========
+from pathlib import Path
+from typing import Callable, Optional
+
+import numpy as np
+import torch
+from PIL import Image
+from torch.utils.data import Dataset
+
+
+class SegmentationDataset(Dataset):
+    """Dataset for genuine pixel-level semantic segmentation masks."""
+
+    SUPPORTED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+
+    def __init__(
+        self,
+        images_dir: str | Path,
+        masks_dir: str | Path,
+        num_classes: Optional[int] = None,
+        image_size: Optional[tuple[int, int]] = None,
+        transform: Optional[Callable] = None,
+    ) -> None:
+
+        self.images_dir = Path(images_dir)
+        self.masks_dir = Path(masks_dir)
+        self.num_classes = num_classes
+        self.image_size = image_size
+        self.transform = transform
+
+        if not self.images_dir.is_dir():
+            raise FileNotFoundError(f"Images directory not found: {self.images_dir}")
+
+        if not self.masks_dir.is_dir():
+            raise FileNotFoundError(f"Masks directory not found: {self.masks_dir}")
+
+        if num_classes is not None and num_classes < 2:
+            raise ValueError("num_classes must be at least 2.")
+
+        if image_size is not None:
+            if len(image_size) != 2 or image_size[0] <= 0 or image_size[1] <= 0:
+                raise ValueError("image_size must be positive (height, width).")
+
+        self.samples = self._discover_samples()
+
+        if not self.samples:
+            raise ValueError("No image-mask pairs were found.")
+
+    def _discover_samples(self):
+        images = sorted(
+            path
+            for path in self.images_dir.iterdir()
+            if path.is_file() and path.suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS
+        )
+
+        samples = []
+        missing = []
+
+        for image_path in images:
+            mask_path = self.masks_dir / f"{image_path.stem}.png"
+
+            if not mask_path.is_file():
+                missing.append(image_path.name)
+            else:
+                samples.append((image_path, mask_path))
+
+        if missing:
+            raise FileNotFoundError(
+                f"{len(missing)} images have missing PNG masks. Examples: {missing[:5]}"
+            )
+
+        return samples
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, index):
+        image_path, mask_path = self.samples[index]
+
+        with Image.open(image_path) as file:
+            image = file.convert("RGB")
+
+        with Image.open(mask_path) as file:
+            mask = file.copy()
+
+        if mask.mode not in ("L", "I", "I;16"):
+            raise ValueError(
+                f"Mask must be single-channel integer data: "
+                f"{mask_path}, mode={mask.mode}"
+            )
+
+        if image.size != mask.size:
+            raise ValueError(f"Image-mask size mismatch: {image_path.name}")
+
+        image_array = np.asarray(image, dtype=np.float32) / 255.0
+        mask_array = np.asarray(mask)
+
+        if mask_array.ndim != 2:
+            raise ValueError("Mask must be a two-dimensional array.")
+
+        if not np.issubdtype(mask_array.dtype, np.integer):
+            raise ValueError("Mask values must be integers.")
+
+        if np.any(mask_array < 0):
+            raise ValueError("Negative mask class IDs are not allowed.")
+
+        if self.num_classes is not None:
+            if np.any(mask_array >= self.num_classes):
+                raise ValueError(
+                    f"Invalid class ID in {mask_path}. "
+                    f"Expected IDs from 0 to {self.num_classes - 1}."
+                )
+
+        image_tensor = torch.from_numpy(
+            np.ascontiguousarray(image_array.transpose(2, 0, 1))
+        )
+        mask_tensor = torch.from_numpy(
+            np.ascontiguousarray(mask_array.astype(np.int64))
+        )
+
+        if self.image_size is not None:
+            target_h, target_w = self.image_size
+
+            image_tensor = torch.nn.functional.interpolate(
+                image_tensor.unsqueeze(0),
+                size=(target_h, target_w),
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(0)
+
+            mask_tensor = (
+                torch.nn.functional.interpolate(
+                    mask_tensor[None, None].float(),
+                    size=(target_h, target_w),
+                    mode="nearest",
+                )
+                .squeeze(0)
+                .squeeze(0)
+                .long()
+            )
+
+        if self.transform is not None:
+            image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
+
+        return image_tensor, mask_tensor
+
+========== src/firesight/data/transforms.py ==========
+import random
+from typing import Optional
+
+import torch
+import torch.nn.functional as F
+
+
+class SegmentationTransform:
+    """Apply paired preprocessing to image and segmentation mask."""
+
+    def __init__(
+        self,
+        image_size: Optional[tuple[int, int]] = None,
+        mean=(0.485, 0.456, 0.406),
+        std=(0.229, 0.224, 0.225),
+        horizontal_flip_prob: float = 0.0,
+        vertical_flip_prob: float = 0.0,
+    ):
+        if not 0 <= horizontal_flip_prob <= 1:
+            raise ValueError("Invalid horizontal flip probability.")
+
+        if not 0 <= vertical_flip_prob <= 1:
+            raise ValueError("Invalid vertical flip probability.")
+
+        if len(mean) != 3 or len(std) != 3:
+            raise ValueError("Mean and std must contain 3 channels.")
+
+        if any(value <= 0 for value in std):
+            raise ValueError("Standard deviations must be positive.")
+
+        self.image_size = image_size
+        self.mean = torch.tensor(mean).view(3, 1, 1)
+        self.std = torch.tensor(std).view(3, 1, 1)
+        self.horizontal_flip_prob = horizontal_flip_prob
+        self.vertical_flip_prob = vertical_flip_prob
+
+    def __call__(self, image: torch.Tensor, mask: torch.Tensor):
+        if image.ndim != 3 or image.shape[0] != 3:
+            raise ValueError("Image must have shape [3, H, W].")
+
+        if mask.ndim != 2:
+            raise ValueError("Mask must have shape [H, W].")
+
+        if image.shape[-2:] != mask.shape:
+            raise ValueError("Image and mask dimensions must match.")
+
+        image = image.float()
+        mask = mask.long()
+
+        if image.min() < 0 or image.max() > 1:
+            raise ValueError("Image values must be in the [0, 1] range.")
+
+        if self.image_size is not None:
+            height, width = self.image_size
+
+            image = F.interpolate(
+                image.unsqueeze(0),
+                size=(height, width),
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(0)
+
+            mask = (
+                F.interpolate(
+                    mask[None, None].float(),
+                    size=(height, width),
+                    mode="nearest",
+                )
+                .squeeze(0)
+                .squeeze(0)
+                .long()
+            )
+
+        if random.random() < self.horizontal_flip_prob:
+            image = torch.flip(image, dims=[2])
+            mask = torch.flip(mask, dims=[1])
+
+        if random.random() < self.vertical_flip_prob:
+            image = torch.flip(image, dims=[1])
+            mask = torch.flip(mask, dims=[0])
+
+        image = (image - self.mean.to(image.device)) / self.std.to(image.device)
+
+        return image.contiguous(), mask.contiguous()
+
+========== scripts/train_unet.py ==========
+"""Train FireSight AI U-Net using a YAML configuration."""
+
+import argparse
+import random
+from pathlib import Path
+
+import numpy as np
+import torch
+import yaml
+from torch.utils.data import DataLoader
+
+from firesight.data.segmentation_dataset import SegmentationDataset
+from firesight.data.transforms import SegmentationTransform
+from firesight.models.unet import UNet
+from firesight.training.losses import CrossEntropyDiceLoss
+from firesight.training.trainer import SegmentationTrainer
+
+
+def load_config(config_path):
+    path = Path(config_path)
+
+    if not path.is_file():
+        raise FileNotFoundError(f"Configuration not found: {path}")
+
+    with path.open("r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+
+    if not isinstance(config, dict):
+        raise ValueError("Configuration must contain a YAML mapping.")
+
+    return config
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def require_directory(path, description):
+    path = Path(path)
+
+    if not path.is_dir():
+        raise FileNotFoundError(f"{description} directory not found: {path}")
+
+    return path
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Train the FireSight AI U-Net segmentation model."
+    )
+    parser.add_argument(
+        "--config",
+        default="configs/unet.yaml",
+        help="Path to the YAML training configuration.",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from the latest checkpoint.",
+    )
+
+    args = parser.parse_args()
+    config = load_config(args.config)
+
+    num_classes = config.get("num_classes")
+
+    if not isinstance(num_classes, int) or num_classes < 2:
+        raise ValueError(
+            "Set num_classes to a verified integer >= 2 in the "
+            "configuration. Verify genuine mask class IDs first."
+        )
+
+    seed = config.get("seed", 42)
+    set_seed(seed)
+
+    data_config = config["data"]
+    image_config = config["image"]
+    training_config = config["training"]
+    model_config = config["model"]
+    optimizer_config = config["optimizer"]
+    loss_config = config["loss"]
+    output_config = config["output"]
+
+    train_images = require_directory(data_config["train_images"], "Training images")
+    train_masks = require_directory(data_config["train_masks"], "Training masks")
+    val_images = require_directory(data_config["val_images"], "Validation images")
+    val_masks = require_directory(data_config["val_masks"], "Validation masks")
+
+    image_size = (
+        int(image_config["height"]),
+        int(image_config["width"]),
+    )
+
+    if min(image_size) <= 0:
+        raise ValueError("Image dimensions must be positive.")
+
+    train_transform = SegmentationTransform(
+        image_size=image_size,
+        mean=tuple(image_config["mean"]),
+        std=tuple(image_config["std"]),
+        horizontal_flip_prob=config["augmentation"]["horizontal_flip_prob"],
+        vertical_flip_prob=config["augmentation"]["vertical_flip_prob"],
+    )
+
+    val_transform = SegmentationTransform(
+        image_size=image_size,
+        mean=tuple(image_config["mean"]),
+        std=tuple(image_config["std"]),
+    )
+
+    train_dataset = SegmentationDataset(
+        images_dir=train_images,
+        masks_dir=train_masks,
+        num_classes=num_classes,
+        transform=train_transform,
+    )
+
+    val_dataset = SegmentationDataset(
+        images_dir=val_images,
+        masks_dir=val_masks,
+        num_classes=num_classes,
+        transform=val_transform,
+    )
+
+    batch_size = int(training_config["batch_size"])
+    num_workers = int(training_config["num_workers"])
+
+    if batch_size < 1 or num_workers < 0:
+        raise ValueError("Invalid batch size or worker count.")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=device.type == "cuda",
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=device.type == "cuda",
+    )
+
+    model = UNet(
+        num_classes=num_classes,
+        in_channels=int(model_config["in_channels"]),
+        base_channels=int(model_config["base_channels"]),
+    )
+
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=float(optimizer_config["learning_rate"]),
+        weight_decay=float(optimizer_config["weight_decay"]),
+    )
+
+    scheduler_config = config["scheduler"]
+    scheduler = None
+
+    if scheduler_config["enabled"]:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=float(scheduler_config["factor"]),
+            patience=int(scheduler_config["patience"]),
+            min_lr=float(scheduler_config["min_learning_rate"]),
+        )
+
+    criterion = CrossEntropyDiceLoss(
+        ce_weight=float(loss_config["cross_entropy_weight"]),
+        dice_weight=float(loss_config["dice_weight"]),
+        ignore_index=loss_config["ignore_index"],
+    )
+
+    trainer = SegmentationTrainer(
+        model=model,
+        optimizer=optimizer,
+        criterion=criterion,
+        device=device,
+        checkpoint_dir=output_config["checkpoint_dir"],
+        gradient_clip=training_config["gradient_clip"],
+        scheduler=scheduler,
+    )
+
+    start_epoch = 1
+
+    if args.resume:
+        start_epoch = trainer.resume()
+        print(f"Resuming training from epoch {start_epoch}.")
+
+    print(f"Device: {device}")
+    print(f"Training images: {len(train_dataset)}")
+    print(f"Validation images: {len(val_dataset)}")
+    print(f"Number of classes: {num_classes}")
+
+    trainer.fit(
+        train_loader=train_loader,
+        val_loader=val_loader,
+        epochs=int(training_config["epochs"]),
+        start_epoch=start_epoch,
+        early_stopping_patience=int(training_config["early_stopping_patience"]),
+        min_delta=float(training_config["min_delta"]),
+        history_dir=output_config["history_dir"],
+    )
+
+
+if __name__ == "__main__":
+    main()
+
+========== src/firesight/training/yolo_trainer.py ==========
+"""Configuration-driven YOLO11 segmentation training."""
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+
+def load_training_config(config_path: str | Path) -> dict[str, Any]:
+    """Load and validate the project training configuration."""
+    config_path = Path(config_path).resolve()
+
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Training config not found: {config_path}")
+
+    with config_path.open("r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+
+    if not isinstance(config, dict):
+        raise ValueError("Training configuration must be a YAML mapping.")
+
+    for section in ("model", "dataset", "training"):
+        if not isinstance(config.get(section), dict):
+            raise ValueError(f"Missing or invalid configuration section: {section}")
+
+    return config
+
+
+def resolve_dataset(dataset_yaml: str | Path) -> dict[str, Any]:
+    """Resolve dataset splits to absolute paths and validate them."""
+    dataset_yaml = Path(dataset_yaml).resolve()
+
+    if not dataset_yaml.is_file():
+        raise FileNotFoundError(f"Dataset YAML not found: {dataset_yaml}")
+
+    with dataset_yaml.open("r", encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+
+    if not isinstance(data, dict):
+        raise ValueError("Dataset YAML must contain a mapping.")
+
+    root_value = Path(data.get("path", "."))
+    root = root_value if root_value.is_absolute() else dataset_yaml.parent / root_value
+    root = root.resolve()
+
+    names = data.get("names")
+    if isinstance(names, list):
+        names = {i: name for i, name in enumerate(names)}
+    elif isinstance(names, dict):
+        names = {int(k): v for k, v in names.items()}
+    else:
+        raise ValueError("Dataset must define class names.")
+
+    if names != {0: "fire", 1: "smoke"}:
+        raise ValueError(f"Expected classes fire and smoke; found: {names}")
+
+    resolved = {
+        "path": str(root),
+        "names": names,
+        "nc": len(names),
+    }
+
+    for split in ("train", "val"):
+        if split not in data:
+            raise ValueError(f"Dataset YAML is missing '{split}'.")
+
+        split_path = Path(data[split])
+        split_path = split_path if split_path.is_absolute() else root / split_path
+        split_path = split_path.resolve()
+
+        if not split_path.is_dir():
+            raise FileNotFoundError(f"{split} images directory not found: {split_path}")
+
+        resolved[split] = str(split_path)
+
+    if "test" in data:
+        test_path = Path(data["test"])
+        test_path = test_path if test_path.is_absolute() else root / test_path
+        test_path = test_path.resolve()
+
+        if not test_path.is_dir():
+            raise FileNotFoundError(f"Test images directory not found: {test_path}")
+
+        resolved["test"] = str(test_path)
+
+    return resolved
+
+
+class YOLOSegTrainer:
+    """Run reproducible YOLO segmentation training."""
+
+    def __init__(self, config_path: str | Path):
+        self.config_path = Path(config_path).resolve()
+        self.config = load_training_config(self.config_path)
+
+        project_root = self.config_path.parent.parent
+        dataset_yaml = project_root / self.config["dataset"]["yaml"]
+        self.dataset = resolve_dataset(dataset_yaml)
+
+    def train(
+        self,
+        epochs: int | None = None,
+        device: str | None = None,
+        imgsz: int | None = None,
+        batch: int | None = None,
+        workers: int | None = None,
+    ):
+        from firesight.models.yolo_seg import build_yolo_seg_model
+
+        model_config = self.config["model"]
+        training_config = dict(self.config["training"])
+
+        if epochs is not None:
+            if epochs < 1:
+                raise ValueError("epochs must be at least 1")
+            training_config["epochs"] = epochs
+
+        if device is not None:
+            training_config["device"] = device
+        if imgsz is not None:
+            training_config["imgsz"] = imgsz
+        if batch is not None:
+            training_config["batch"] = batch
+        if workers is not None:
+            training_config["workers"] = workers
+
+        # Keep output paths anchored to the project, not the shell's cwd.
+        project_root = self.config_path.parent.parent
+        output_project = Path(training_config.get("project", "runs/segment"))
+        if not output_project.is_absolute():
+            output_project = project_root / output_project
+
+        training_config["project"] = str(output_project)
+
+        model = build_yolo_seg_model(model_config["weights"])
+
+        dataset_yaml = (
+            self.config_path.parent.parent
+            / self.config["dataset"]["yaml"]
+        ).resolve()
+
+        return model.train(
+            data=str(dataset_yaml),
+            **training_config,
+        )
+
+========== src/firesight/evaluation/yolo_evaluator.py ==========
+"""Evaluation utilities for YOLO instance-segmentation models."""
+
+from pathlib import Path
+import json
+
+import numpy as np
+import torch
+import torch.nn.functional as F
+import yaml
+from PIL import Image, ImageDraw
+
+
+def load_dataset_info(data_yaml, split="test"):
+    """Resolve dataset image and label directories from YOLO YAML."""
+    data_yaml = Path(data_yaml).resolve()
+    if not data_yaml.is_file():
+        raise FileNotFoundError(data_yaml)
+
+    data = yaml.safe_load(data_yaml.read_text())
+    if split not in data:
+        raise ValueError(f"Dataset split missing: {split}")
+
+    root = Path(data.get("path") or data_yaml.parent)
+    if not root.is_absolute():
+        root = (data_yaml.parent / root).resolve()
+
+    image_dir = Path(data[split])
+    if not image_dir.is_absolute():
+        image_dir = root / image_dir
+
+    image_dir = image_dir.resolve()
+    if not image_dir.is_dir():
+        raise FileNotFoundError(f"Image directory missing: {image_dir}")
+
+    label_dir = image_dir.parent.parent / "labels" / image_dir.name
+    return data, image_dir, label_dir
+
+
+def rasterize_yolo_labels(label_path, width, height, num_classes):
+    """Convert normalized YOLO polygon labels into class-ID masks."""
+    mask = np.zeros((height, width), dtype=np.uint8)
+    label_path = Path(label_path)
+
+    if not label_path.exists():
+        return mask
+
+    image = Image.fromarray(mask)
+    draw = ImageDraw.Draw(image)
+
+    for line_number, line in enumerate(label_path.read_text().splitlines(), 1):
+        parts = line.split()
+        if not parts:
+            continue
+
+        values = [float(v) for v in parts]
+        class_id = int(values[0])
+
+        if class_id < 0 or class_id >= num_classes:
+            raise ValueError(f"Invalid class ID at {label_path}:{line_number}")
+
+        coords = values[1:]
+        if len(coords) < 6 or len(coords) % 2:
+            raise ValueError(f"Invalid polygon at {label_path}:{line_number}")
+
+        points = []
+        for x, y in zip(coords[::2], coords[1::2]):
+            if not (0 <= x <= 1 and 0 <= y <= 1):
+                raise ValueError(f"Non-normalized polygon at {label_path}:{line_number}")
+            points.append((round(x * (width - 1)), round(y * (height - 1))))
+
+        draw.polygon(points, fill=class_id + 1)
+
+    result = np.asarray(image, dtype=np.uint8)
+    return result
+
+
+def compute_mask_metrics(counts, class_names):
+    """Calculate aggregate pixel-level metrics for each foreground class."""
+    per_class = []
+
+    for class_id, name in enumerate(class_names):
+        tp, fp, fn = counts[class_id]
+
+        precision = tp / (tp + fp) if tp + fp else None
+        recall = tp / (tp + fn) if tp + fn else None
+        dice = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else None
+        iou = tp / (tp + fp + fn) if tp + fp + fn else None
+
+        per_class.append({
+            "class_id": class_id,
+            "class_name": str(name),
+            "tp_pixels": int(tp),
+            "fp_pixels": int(fp),
+            "fn_pixels": int(fn),
+            "precision": precision,
+            "recall": recall,
+            "dice": dice,
+            "iou": iou,
+        })
+
+    def macro(key):
+        values = [item[key] for item in per_class if item[key] is not None]
+        return sum(values) / len(values) if values else None
+
+    return {
+        "macro_precision": macro("precision"),
+        "macro_recall": macro("recall"),
+        "macro_dice": macro("dice"),
+        "macro_iou": macro("iou"),
+        "per_class": per_class,
+    }
+
+
+class YOLOSegEvaluator:
+    """Evaluate YOLO segmentation using native AP and pixel-level metrics."""
+
+    def __init__(
+        self,
+        checkpoint,
+        data_yaml,
+        split="test",
+        imgsz=640,
+        device=None,
+        conf=0.25,
+    ):
+        self.checkpoint = Path(checkpoint).resolve()
+        self.data_yaml = Path(data_yaml).resolve()
+        self.split = split
+        self.imgsz = imgsz
+        self.device = device
+        self.conf = conf
+
+        if not self.checkpoint.is_file():
+            raise FileNotFoundError(self.checkpoint)
+
+        self.data, self.image_dir, self.label_dir = load_dataset_info(
+            self.data_yaml, split
+        )
+        self.names = self.data["names"]
+        self.num_classes = len(self.names)
+
+        if isinstance(self.names, dict):
+            self.class_names = [
+                str(self.names.get(i, self.names.get(str(i))))
+                for i in range(self.num_classes)
+            ]
+        else:
+            self.class_names = list(self.names)
+
+        if self.num_classes < 1:
+            raise ValueError("Dataset must contain at least one class.")
+
+    @staticmethod
+    def _metric_value(metrics, key):
+        value = metrics.get(key)
+        if value is None:
+            return None
+        return float(value)
+
+    @torch.no_grad()
+    def evaluate(self, output_dir="runs/evaluation/yolo11_seg"):
+        from ultralytics import YOLO
+
+        model = YOLO(str(self.checkpoint))
+
+        # Official Ultralytics detection and instance-segmentation metrics.
+        native = model.val(
+            data=str(self.data_yaml),
+            split=self.split,
+            imgsz=self.imgsz,
+            device=self.device,
+            plots=True,
+            verbose=False,
+        )
+
+        native_values = native.results_dict
+
+        image_paths = sorted(
+            p for p in self.image_dir.iterdir()
+            if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp"}
+        )
+        if not image_paths:
+            raise ValueError(f"No images found in {self.image_dir}")
+
+        # Counts are accumulated across all pixels and images.
+        counts = [[0, 0, 0] for _ in range(self.num_classes)]
+
+        for image_path in image_paths:
+            with Image.open(image_path) as im:
+                width, height = im.size
+
+            gt = rasterize_yolo_labels(
+                self.label_dir / f"{image_path.stem}.txt",
+                width,
+                height,
+                self.num_classes,
+            )
+
+            predictions = model.predict(
+                source=str(image_path),
+                imgsz=self.imgsz,
+                device=self.device,
+                conf=self.conf,
+                verbose=False,
+            )
+            result = predictions[0]
+
+            pred = np.zeros((height, width), dtype=np.uint8)
+
+            if result.masks is not None and result.boxes is not None:
+                mask_data = result.masks.data.float()
+                mask_data = F.interpolate(
+                    mask_data.unsqueeze(1),
+                    size=(height, width),
+                    mode="bilinear",
+                    align_corners=False,
+                )[:, 0] > 0.5
+
+                class_ids = result.boxes.cls.int().cpu().tolist()
+
+                for instance_mask, class_id in zip(
+                    mask_data.cpu().numpy(), class_ids
+                ):
+                    if 0 <= class_id < self.num_classes:
+                        pred[instance_mask] = class_id + 1
+
+            for class_id in range(self.num_classes):
+                target = gt == (class_id + 1)
+                predicted = pred == (class_id + 1)
+
+                tp = int(np.logical_and(target, predicted).sum())
+                fp = int(np.logical_and(~target, predicted).sum())
+                fn = int(np.logical_and(target, ~predicted).sum())
+
+                counts[class_id][0] += tp
+                counts[class_id][1] += fp
+                counts[class_id][2] += fn
+
+        mask_metrics = compute_mask_metrics(counts, self.class_names)
+
+        report = {
+            "checkpoint": str(self.checkpoint),
+            "dataset_yaml": str(self.data_yaml),
+            "split": self.split,
+            "images_evaluated": len(image_paths),
+            "image_size": self.imgsz,
+            "confidence_threshold": self.conf,
+            "classes": self.class_names,
+            "native_yolo_metrics": {
+                key: self._metric_value(native_values, key)
+                for key in (
+                    "metrics/precision(B)",
+                    "metrics/recall(B)",
+                    "metrics/mAP50(B)",
+                    "metrics/mAP50-95(B)",
+                    "metrics/precision(M)",
+                    "metrics/recall(M)",
+                    "metrics/mAP50(M)",
+                    "metrics/mAP50-95(M)",
+                )
+            },
+            "pixel_segmentation_metrics": mask_metrics,
+            "note": (
+                "Pixel metrics are aggregate foreground-class metrics. "
+                "Native YOLO AP metrics are calculated independently."
+            ),
+        }
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        report_path = output_dir / "evaluation_report.json"
+        report_path.write_text(json.dumps(report, indent=2))
+
+        report["report_path"] = str(report_path.resolve())
+        return report
+
+========== scripts/evaluate_yolo11_seg.py ==========
+"""Evaluate a trained YOLO11 segmentation checkpoint."""
+
+import argparse
+import json
+
+from firesight.evaluation.yolo_evaluator import YOLOSegEvaluator
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument(
+        "--data",
+        default="data/processed/yolo11_seg_split_safe/data.yaml",
+    )
+    parser.add_argument("--split", choices=("val", "test"), default="test")
+    parser.add_argument("--imgsz", type=int, default=640)
+    parser.add_argument("--device", default=None)
+    parser.add_argument("--conf", type=float, default=0.25)
+    parser.add_argument(
+        "--output",
+        default="runs/evaluation/yolo11_seg",
+    )
+    args = parser.parse_args()
+
+    evaluator = YOLOSegEvaluator(
+        checkpoint=args.checkpoint,
+        data_yaml=args.data,
+        split=args.split,
+        imgsz=args.imgsz,
+        device=args.device,
+        conf=args.conf,
+    )
+    report = evaluator.evaluate(args.output)
+
+    print("\n========== YOLO SEGMENTATION EVALUATION ==========")
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+
+========== PROJECT TEST FILES ==========
+tests/__pycache__/test_api.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_api.cpython-312-pytest-9.2.0.pyc
+tests/__pycache__/test_api.cpython-312.pyc
+tests/__pycache__/test_inference.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_inference.cpython-312-pytest-9.2.0.pyc
+tests/__pycache__/test_inference.cpython-312.pyc
+tests/__pycache__/test_metrics.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_metrics.cpython-312-pytest-9.2.0.pyc
+tests/__pycache__/test_metrics.cpython-312.pyc
+tests/__pycache__/test_preprocessing.cpython-312-pytest-9.1.1.pyc
+tests/__pycache__/test_preprocessing.cpython-312-pytest-9.2.0.pyc
+tests/__pycache__/test_preprocessing.cpython-312.pyc
+tests/phase02/__pycache__/test_annotations.cpython-312-pytest-9.2.0.pyc
+tests/phase02/__pycache__/test_splitting.cpython-312-pytest-9.2.0.pyc
+tests/phase02/test_annotations.py
+tests/phase02/test_splitting.py
+tests/phase03/__pycache__/test_dataset.cpython-312-pytest-9.2.0.pyc
+tests/phase03/__pycache__/test_dataset.cpython-312.pyc
+tests/phase03/__pycache__/test_losses.cpython-312-pytest-9.2.0.pyc
+tests/phase03/__pycache__/test_losses.cpython-312.pyc
+tests/phase03/__pycache__/test_metrics.cpython-312-pytest-9.2.0.pyc
+tests/phase03/__pycache__/test_metrics.cpython-312.pyc
+tests/phase03/__pycache__/test_predictor.cpython-312-pytest-9.2.0.pyc
+tests/phase03/__pycache__/test_predictor.cpython-312.pyc
+tests/phase03/__pycache__/test_trainer.cpython-312-pytest-9.2.0.pyc
+tests/phase03/__pycache__/test_trainer.cpython-312.pyc
+tests/phase03/__pycache__/test_unet.cpython-312-pytest-9.2.0.pyc
+tests/phase03/__pycache__/test_unet.cpython-312.pyc
+tests/phase03/test_dataset.py
+tests/phase03/test_losses.py
+tests/phase03/test_metrics.py
+tests/phase03/test_predictor.py
+tests/phase03/test_trainer.py
+tests/phase03/test_unet.py
+tests/phase04/__pycache__/test_yolo_evaluator.cpython-312-pytest-9.2.0.pyc
+tests/phase04/__pycache__/test_yolo_trainer.cpython-312-pytest-9.2.0.pyc
+tests/phase04/test_yolo_evaluator.py
+tests/phase04/test_yolo_trainer.py
+tests/test_api.py
+tests/test_inference.py
+tests/test_metrics.py
+tests/test_preprocessing.py
+
+========== SOURCE DATASET STRUCTURE ==========
+data/raw/roboflow_fire_smoke_seg_v1/README.dataset.txt
+data/raw/roboflow_fire_smoke_seg_v1/README.roboflow.txt
+data/raw/roboflow_fire_smoke_seg_v1/test/_annotations.coco.json
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0014_jpg.rf.6ea81b6696f97d0d215876598a4c1ff8.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0028_jpg.rf.f27f324c57c833b85df2c84c5289f4da.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0029_jpg.rf.42a6c6a13dd369e6e7ce4413cd3c6235.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0057_jpg.rf.7b26d13c822a35706b3d4ab610da9e70.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0058_jpg.rf.d523c196faf6d6839608425728cea69c.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0059_jpg.rf.7f8f462c357e83594b0671039c444331.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0060_jpg.rf.0a8a88a652b41753c3768bd21f469ee5.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0074_jpg.rf.3df2e6862c58668fae6bec315dca868f.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0078_jpg.rf.a64799ec19d6f0a6063a10beb161842b.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0089_jpg.rf.4b52d9620ee0c678eda0fae322f2f8d6.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0104_jpg.rf.7c27619b88daeddd0719601cd801858d.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0125_jpg.rf.f3698415a3f3fdaacfc42c055ea5a5c4.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0164_jpg.rf.50007082c4e4d079ccf447a2e92ff201.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0167_jpg.rf.0b5b9b75a2bcf9392b51a3369dc1b2e9.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0188_png_jpg.rf.d2a8f689b36647e2768a7cee8e73d453.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0199_jpg.rf.e20913c2f95c18dae267eed64f3e11a3.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0212_jpg.rf.e47cd8b137f69452f23c67f4224f9dce.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0216_jpg.rf.012322a713a936a586391e76108040db.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0217_jpg.rf.c7d3f21fb4751fc3c7a680bd0b27f517.jpg
+data/raw/roboflow_fire_smoke_seg_v1/test/flare_0222_jpg.rf.ce0ac1618ab9859a0c55a734eaa19ade.jpg
+data/raw/roboflow_fire_smoke_seg_v1/train/_annotations.coco.json
+data/raw/roboflow_fire_smoke_seg_v1/train/flare_0000_jpg.rf.a9e05bdfd89a7f718ffcc1c700e14758.jpg
+data/raw/roboflow_fire_smoke_seg_v1/train/flare_0001_jpg.rf.fb4924f48592a549e39a450f49c84367.jpg
+data/raw/roboflow_fire_smoke_seg_v1/train/flare_0003_jpg.rf.e3db6e102a7c6940808fbd408695219d.jpg
+data/raw/roboflow_fire_smoke_seg_v1/train/flare_0004_jpg.rf.9ca5ec604a4abc7081a88bd82abfbfc2.jpg
+data/raw/roboflow_fire_smoke_seg_v1/train/flare_0005_jpg.rf.f97131330a72e24d661f4c9bde420654.jpg
+data/raw/roboflow_fire_smoke_seg_v1/train/flare_0006_jpg.rf.555561d1677b29331f11b2873aba7f61.jpg
