@@ -1,0 +1,24 @@
+# Fair Phase 05 YOLO11-seg training; use GPU for a proper run.
+model:
+  weights: yolo11n-seg.pt
+  task: segment
+  classes: [fire, smoke]
+dataset:
+  yaml: data/processed/phase05_fair/yolo/data.yaml
+training:
+  epochs: 100
+  imgsz: 640
+  batch: 4
+  device: 0
+  workers: 2
+  patience: 20
+  seed: 42
+  pretrained: true
+  optimizer: auto
+  project: runs/segment
+  name: firesight_phase05_fair_yolo11n_seg
+  exist_ok: false
+  save: true
+  plots: true
+  val: true
+  deterministic: true
