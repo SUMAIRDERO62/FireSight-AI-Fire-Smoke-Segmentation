@@ -1,27 +1,16 @@
-
-# FireSight AI - U-Net training configuration
-
+# FireSight AI: two-channel multi-label U-Net
 seed: 42
-
-# Set this only after verifying the real segmentation class mapping.
-num_classes: null
-
 data:
-  train_images: data/segmentation/train/images
-  train_masks: data/segmentation/train/masks
-  val_images: data/segmentation/val/images
-  val_masks: data/segmentation/val/masks
-
+  train_root: data/processed/phase05_fair/unet/train
+  val_root: data/processed/phase05_fair/unet/val
 image:
   height: 256
   width: 256
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
-
 augmentation:
   horizontal_flip_prob: 0.5
   vertical_flip_prob: 0.0
-
 training:
   epochs: 50
   batch_size: 4
@@ -29,26 +18,20 @@ training:
   gradient_clip: 1.0
   early_stopping_patience: 8
   min_delta: 0.0001
-
 optimizer:
   learning_rate: 0.001
   weight_decay: 0.0001
-
 scheduler:
   enabled: true
   factor: 0.5
   patience: 3
   min_learning_rate: 0.000001
-
 model:
   in_channels: 3
-  base_channels: 32
-
+  base_channels: 16
 loss:
-  cross_entropy_weight: 1.0
+  bce_weight: 1.0
   dice_weight: 1.0
-  ignore_index: null
-
 output:
-  checkpoint_dir: models/checkpoints
-  history_dir: reports/training
+  checkpoint_dir: models/checkpoints/phase05_unet
+  history_dir: reports/training/phase05_unet
