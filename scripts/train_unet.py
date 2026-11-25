@@ -1,215 +1,88 @@
-"""Train FireSight AI U-Net using a YAML configuration."""
-
+"""Train the two-channel FireSight U-Net."""
 import argparse
 import random
 from pathlib import Path
-
 import numpy as np
 import torch
 import yaml
 from torch.utils.data import DataLoader
 
-from firesight.data.segmentation_dataset import SegmentationDataset
+from firesight.data.multilabel_dataset import MultiLabelSegmentationDataset
 from firesight.data.transforms import SegmentationTransform
 from firesight.models.unet import UNet
-from firesight.training.losses import CrossEntropyDiceLoss
+from firesight.training.losses import BCEWithLogitsDiceLoss
 from firesight.training.trainer import SegmentationTrainer
 
 
-def load_config(config_path):
-    path = Path(config_path)
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default="configs/unet.yaml")
+    parser.add_argument("--resume", action="store_true")
+    args = parser.parse_args()
+    config_path = Path(args.config).resolve()
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    root = config_path.parent.parent
+    def project_path(value):
+        path = Path(value)
+        return path if path.is_absolute() else root / path
 
-    if not path.is_file():
-        raise FileNotFoundError(f"Configuration not found: {path}")
-
-    with path.open("r", encoding="utf-8") as file:
-        config = yaml.safe_load(file)
-
-    if not isinstance(config, dict):
-        raise ValueError("Configuration must contain a YAML mapping.")
-
-    return config
-
-
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-
+    seed = int(config.get("seed", 42))
+    random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-
-def require_directory(path, description):
-    path = Path(path)
-
-    if not path.is_dir():
-        raise FileNotFoundError(f"{description} directory not found: {path}")
-
-    return path
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Train the FireSight AI U-Net segmentation model."
-    )
-    parser.add_argument(
-        "--config",
-        default="configs/unet.yaml",
-        help="Path to the YAML training configuration.",
-    )
-    parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from the latest checkpoint.",
-    )
-
-    args = parser.parse_args()
-    config = load_config(args.config)
-
-    num_classes = config.get("num_classes")
-
-    if not isinstance(num_classes, int) or num_classes < 2:
-        raise ValueError(
-            "Set num_classes to a verified integer >= 2 in the "
-            "configuration. Verify genuine mask class IDs first."
+    data = config["data"]
+    image_cfg, aug = config["image"], config["augmentation"]
+    size = (int(image_cfg["height"]), int(image_cfg["width"]))
+    def make_dataset(split, training):
+        base = project_path(data[f"{split}_root"])
+        transform = SegmentationTransform(
+            mean=tuple(image_cfg["mean"]), std=tuple(image_cfg["std"]),
+            horizontal_flip_prob=float(aug["horizontal_flip_prob"]) if training else 0.0,
+            vertical_flip_prob=float(aug["vertical_flip_prob"]) if training else 0.0,
+        )
+        return MultiLabelSegmentationDataset(
+            base / "images", base / "masks/fire", base / "masks/smoke",
+            image_size=size, transform=transform,
         )
 
-    seed = config.get("seed", 42)
-    set_seed(seed)
-
-    data_config = config["data"]
-    image_config = config["image"]
-    training_config = config["training"]
-    model_config = config["model"]
-    optimizer_config = config["optimizer"]
-    loss_config = config["loss"]
-    output_config = config["output"]
-
-    train_images = require_directory(data_config["train_images"], "Training images")
-    train_masks = require_directory(data_config["train_masks"], "Training masks")
-    val_images = require_directory(data_config["val_images"], "Validation images")
-    val_masks = require_directory(data_config["val_masks"], "Validation masks")
-
-    image_size = (
-        int(image_config["height"]),
-        int(image_config["width"]),
-    )
-
-    if min(image_size) <= 0:
-        raise ValueError("Image dimensions must be positive.")
-
-    train_transform = SegmentationTransform(
-        image_size=image_size,
-        mean=tuple(image_config["mean"]),
-        std=tuple(image_config["std"]),
-        horizontal_flip_prob=config["augmentation"]["horizontal_flip_prob"],
-        vertical_flip_prob=config["augmentation"]["vertical_flip_prob"],
-    )
-
-    val_transform = SegmentationTransform(
-        image_size=image_size,
-        mean=tuple(image_config["mean"]),
-        std=tuple(image_config["std"]),
-    )
-
-    train_dataset = SegmentationDataset(
-        images_dir=train_images,
-        masks_dir=train_masks,
-        num_classes=num_classes,
-        transform=train_transform,
-    )
-
-    val_dataset = SegmentationDataset(
-        images_dir=val_images,
-        masks_dir=val_masks,
-        num_classes=num_classes,
-        transform=val_transform,
-    )
-
-    batch_size = int(training_config["batch_size"])
-    num_workers = int(training_config["num_workers"])
-
-    if batch_size < 1 or num_workers < 0:
-        raise ValueError("Invalid batch size or worker count.")
-
+    train_ds, val_ds = make_dataset("train", True), make_dataset("val", False)
+    train_cfg = config["training"]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    kwargs = dict(batch_size=int(train_cfg["batch_size"]), num_workers=int(train_cfg["num_workers"]),
+                  pin_memory=device.type == "cuda")
+    train_loader = DataLoader(train_ds, shuffle=True, **kwargs)
+    val_loader = DataLoader(val_ds, shuffle=False, **kwargs)
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=device.type == "cuda",
+    model = UNet(num_classes=2, in_channels=int(config["model"]["in_channels"]),
+                 base_channels=int(config["model"]["base_channels"]))
+    opt_cfg = config["optimizer"]
+    optimizer = torch.optim.AdamW(model.parameters(), lr=float(opt_cfg["learning_rate"]),
+                                  weight_decay=float(opt_cfg["weight_decay"]))
+    sched_cfg = config["scheduler"]
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=float(sched_cfg["factor"]),
+        patience=int(sched_cfg["patience"]), min_lr=float(sched_cfg["min_learning_rate"])
+    ) if sched_cfg["enabled"] else None
+    loss_cfg = config["loss"]
+    criterion = BCEWithLogitsDiceLoss(
+        bce_weight=float(loss_cfg["bce_weight"]),
+        dice_weight=float(loss_cfg["dice_weight"]),
     )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=device.type == "cuda",
-    )
-
-    model = UNet(
-        num_classes=num_classes,
-        in_channels=int(model_config["in_channels"]),
-        base_channels=int(model_config["base_channels"]),
-    )
-
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=float(optimizer_config["learning_rate"]),
-        weight_decay=float(optimizer_config["weight_decay"]),
-    )
-
-    scheduler_config = config["scheduler"]
-    scheduler = None
-
-    if scheduler_config["enabled"]:
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=float(scheduler_config["factor"]),
-            patience=int(scheduler_config["patience"]),
-            min_lr=float(scheduler_config["min_learning_rate"]),
-        )
-
-    criterion = CrossEntropyDiceLoss(
-        ce_weight=float(loss_config["cross_entropy_weight"]),
-        dice_weight=float(loss_config["dice_weight"]),
-        ignore_index=loss_config["ignore_index"],
-    )
-
+    output = config["output"]
     trainer = SegmentationTrainer(
-        model=model,
-        optimizer=optimizer,
-        criterion=criterion,
-        device=device,
-        checkpoint_dir=output_config["checkpoint_dir"],
-        gradient_clip=training_config["gradient_clip"],
-        scheduler=scheduler,
+        model, optimizer, criterion, device=device,
+        checkpoint_dir=project_path(output["checkpoint_dir"]),
+        gradient_clip=float(train_cfg["gradient_clip"]), scheduler=scheduler,
     )
-
-    start_epoch = 1
-
-    if args.resume:
-        start_epoch = trainer.resume()
-        print(f"Resuming training from epoch {start_epoch}.")
-
-    print(f"Device: {device}")
-    print(f"Training images: {len(train_dataset)}")
-    print(f"Validation images: {len(val_dataset)}")
-    print(f"Number of classes: {num_classes}")
-
+    start = trainer.resume() if args.resume else 1
+    print(f"Device: {device}; train={len(train_ds)}; val={len(val_ds)}; classes=fire,smoke")
     trainer.fit(
-        train_loader=train_loader,
-        val_loader=val_loader,
-        epochs=int(training_config["epochs"]),
-        start_epoch=start_epoch,
-        early_stopping_patience=int(training_config["early_stopping_patience"]),
-        min_delta=float(training_config["min_delta"]),
-        history_dir=output_config["history_dir"],
+        train_loader, val_loader, epochs=int(train_cfg["epochs"]),
+        start_epoch=start,
+        early_stopping_patience=int(train_cfg["early_stopping_patience"]),
+        min_delta=float(train_cfg["min_delta"]),
+        history_dir=project_path(output["history_dir"]),
     )
 
 
