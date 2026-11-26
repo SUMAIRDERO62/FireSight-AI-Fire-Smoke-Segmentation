@@ -97,3 +97,7 @@ inference-results/
 # Generated training history and plots
 reports/training/*
 !reports/training/.gitkeep
+
+# FireSight API runtime outputs
+outputs/
+
