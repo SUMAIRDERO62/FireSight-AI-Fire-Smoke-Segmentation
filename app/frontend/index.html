@@ -1,24 +1,13 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FireSight AI</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
   </head>
   <body>
-    <main>
-      <h1>FireSight AI</h1>
-      <p>Upload an image and compare fire/smoke segmentation models.</p>
-      <label for="model">Model:</label>
-      <select id="model">
-        <option value="unet">U-Net</option>
-        <option value="yolo11-seg">YOLO11-seg</option>
-      </select>
-      <input id="image" type="file" accept="image/*">
-      <button id="segment">Segment</button>
-      <pre id="result">No prediction yet.</pre>
-    </main>
-    <script src="app.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
